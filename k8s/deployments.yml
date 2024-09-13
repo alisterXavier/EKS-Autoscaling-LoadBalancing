@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudopsblend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: cloudopsblend
+  name: test-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-server
+  template:
+    metadata:
+      labels:
+        app: test-server
+    spec:
+      containers:
+      - name: myapp
+        image: docker.io/alisterxavier153/simple-node-server-80:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+          - name : test-service
+            containerPort: 80
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: role
+                    operator: In
+                    values:
+                    - general
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   namespace: cloudopsblend
+#   name: cloudopsblend-service
+# spec:
+#   selector:
+#     name: test-server
+#   ports:
+#     - protocol: TCP
+#       port: 80
+#       targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-lb
+  namespace: cloudopsblend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+spec:
+  type: LoadBalancer
+  selector:
+    app: test-server
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: test-service
